@@ -21,6 +21,8 @@ class DeleteDuplicatePaths(FilterWithoutDialog):
 		self.menuName = Glyphs.localize({
 			'en': u'Delete Duplicate Paths',
 			'de': u'Doppelte Pfade löschen',
+			'es': u'Borrar trazados duplicados',
+			'fr': u'Supprimer doubles tracés',
 		})
 		self.keyboardShortcut = None # With Cmd+Shift
 	
