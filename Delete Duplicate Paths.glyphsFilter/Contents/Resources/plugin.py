@@ -1,4 +1,5 @@
 # encoding: utf-8
+from __future__ import division, print_function, unicode_literals
 
 ###########################################################################################################
 #
@@ -17,6 +18,7 @@ from GlyphsApp.plugins import *
 
 class DeleteDuplicatePaths(FilterWithoutDialog):
 	
+	@objc.python_method
 	def settings(self):
 		self.menuName = Glyphs.localize({
 			'en': u'Delete Duplicate Paths',
@@ -26,37 +28,74 @@ class DeleteDuplicatePaths(FilterWithoutDialog):
 		})
 		self.keyboardShortcut = None # With Cmd+Shift
 	
+	@objc.python_method
 	def streamlinedPathDict(self, path):
-		pathdict = dict(path.pathDict())
-		nodelist = []
-		for node in pathdict["nodes"]:
-			node = str(node).replace(" SMOOTH","") # we do not care if green or blue
-			nodelist.append(node)
-		pathdict["nodes"] = tuple(nodelist) 
-		return pathdict
+		try:
+			# GLYPHS 3
+			pathDict = path.propertyListValueFormat_(3)
+			for node in pathDict["nodes"]:
+				if "conn" in node:
+					del node["conn"]
+			return pathDict
+		except:
+			# GLYPHS 2
+			pathDict = dict(path.pathDict())
+			nodeList = []
+			for node in pathDict["nodes"]:
+				node = str(node).replace(" SMOOTH","") # we do not care if green or blue
+				nodeList.append(node)
+			pathDict["nodes"] = tuple(nodeList) 
+			return pathDict
 	
+	@objc.python_method
 	def filter(self, layer, inEditView, customParameters):
-		pathcount = len(layer.paths)
-		if pathcount > 1:
+		try:
+			# GLYPHS 3
+			pathCount = len(layer.shapes)
+		except:
+			# GLYPHS 2
+			pathCount = len(layer.paths)
+		
+		if pathCount > 1:
 			
 			# count backwards, so we do not mess up the path index numbers:
-			for i in range(pathcount)[::-1]: 
+			for i in reversed(range(pathCount)):
 				if i > 0:
-					currpath = layer.paths[i]
-					currpathdict = self.streamlinedPathDict(currpath)
-					shoulddeletecurrpath = False
+					try:
+						# GLYPHS 3
+						currPath = layer.shapes[i]
+					except:
+						# GLYPHS 2
+						currPath = layer.paths[i]
 					
-					# count backwards, so we do not mess up the path index numbers:
-					for j in range(i)[::-1]: 
-						otherpath = layer.paths[j]
-						otherpathdict = self.streamlinedPathDict(otherpath)
-						if currpathdict == otherpathdict:
-							shoulddeletecurrpath = True
+					if type(currPath) is GSPath:
+						currPathDict = self.streamlinedPathDict(currPath)
+						shouldDeletecurrPath = False
 					
-					# delete if duplicate has been found:
-					if shoulddeletecurrpath:
-						del layer.paths[i]
+						# count backwards, so we do not mess up the path index numbers:
+						for j in reversed(range(i)): 
+							try:
+								# GLYPHS 3
+								otherPath = layer.shapes[j]
+							except:
+								# GLYPHS 2
+								otherPath = layer.paths[j]
+						
+							otherPathDict = self.streamlinedPathDict(otherPath)
+							if currPathDict == otherPathDict:
+								shouldDeletecurrPath = True
+					
+						# delete if duplicate has been found:
+						if shouldDeletecurrPath:
+							try:
+								# GLYPHS 3
+								del layer.shapes[i]
+							except:
+								# GLYPHS 2
+								del layer.paths[i]
+						
 	
+	@objc.python_method
 	def __file__(self):
 		"""Please leave this method unchanged"""
 		return __file__
